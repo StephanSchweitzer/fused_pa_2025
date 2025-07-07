@@ -1,0 +1,88 @@
+data:
+  metadata_path: "../data/processed_datasets/metadata/all_voice_metadata.json"
+  data_dir: "../data"
+  sample_rate: 22050
+  
+model:
+  unfreeze_last_n_layers: 0
+  
+training:
+  num_epochs: 4
+  learning_rate: 5e-5
+  batch_size: 1
+  
+  valence_weight: 1.0
+  arousal_weight: 1.0
+  consistency_weight: 0.1
+  regularization_weight: 0.01
+  
+  checkpoint_every: 1
+  
+optimization:
+  weight_decay: 0.01
+  gradient_clip_norm: 1.0
+  
+paths:
+  checkpoint_dir: "checkpoints/valence_arousal_xtts"
+  log_dir: "logs/valence_arousal_xtts"
+
+xtts:
+  local_model_dir: "./models/xtts_v2"
+
+device: "cuda"
+num_workers: 0
+
+seed: 42
+
+vad_model_dir: "models/vad_model"
+
+quick_test:
+  enabled: true               
+  max_samples: 500
+  max_steps: 500
+  max_speakers: 50
+  emotions_to_test: ["HAP", "SAD", "ANG", "NEU", "FEA"]
+
+loss_weights:
+  vad_weight: 0.7
+  speaker_weight: 0.3
+
+inference:
+  temperature: 0.75
+  length_penalty: 1.0
+  repetition_penalty: 1.1
+  top_k: 50
+  top_p: 0.8
+
+evaluation:
+  val_every_n_epochs: 1
+  generate_samples_every: 50
+
+vad_training:
+  vad_eval_frequency: 5
+  
+  adaptation:
+    low_accuracy_threshold: 0.85
+    high_accuracy_threshold: 0.95
+    
+    increase_rate_gpt: 1.1
+    increase_rate_speaker: 1.05
+    decrease_rate_gpt: 1.0
+    decrease_rate_speaker: 1.0
+    
+    min_gpt_strength: 0.1
+    max_gpt_strength: 1.2
+    min_speaker_strength: 0.05
+    max_speaker_strength: 0.6
+    
+    initial_gpt_strength: 0.4
+    initial_speaker_strength: 0.12
+    
+    max_feedback_history: 100
+    recent_history_window: 15
+  
+  modes:
+    training: true
+    validation: true
+    disable_vad_eval: false
+    validation_only: false
