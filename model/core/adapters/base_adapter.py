@@ -9,7 +9,7 @@ class BaseAdapter(nn.Module, ABC):
         self.emotion_dim = emotion_dim
 
     @abstractmethod
-    def forward(self, gpt_cond_latent, speaker_embedding, valence, arousal):
+    def forward(self, gpt_cond_latent, speaker_embedding, *args, **kwargs):
         """Méthode abstraite pour le forward pass."""
         pass
 
