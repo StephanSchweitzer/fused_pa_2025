@@ -15,7 +15,8 @@ import torchaudio
 import tempfile
 from tensorboardX import SummaryWriter
 
-from dataset import ValenceArousalDataset, cross_emotional_collate_fn
+from data.dataset import ValenceArousalDataset
+from data.data_utils import cross_emotional_collate_fn
 from emotion_model import ValenceArousalXTTS
 from vad_analyzer import VADAnalyzer
 

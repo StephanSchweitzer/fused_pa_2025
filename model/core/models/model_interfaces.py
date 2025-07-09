@@ -1,6 +1,7 @@
 from typing import Protocol, Tuple, Optional, Dict, Any
 import torch
 
+
 class EmotionalTTSModel(Protocol):
     """Interface pour les modèles TTS émotionnels."""
 

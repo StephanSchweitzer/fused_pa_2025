@@ -1,6 +1,7 @@
 import torch
 from model.core.models.emotion_model import ValenceArousalXTTS
 
+
 if __name__ == "__main__":
     model = ValenceArousalXTTS(local_model_dir="./models/xtts_v2")
 
