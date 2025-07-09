@@ -1,7 +1,8 @@
 import torch
+from typing import List, Dict, Any
 
 
-def cross_emotional_collate_fn(batch):
+def cross_emotional_collate_fn(batch: List[Dict[str, Any]]) -> Dict[str, Any]:
     """Custom collate function for cross-emotional training."""
 
     # Generation inputs
