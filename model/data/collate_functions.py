@@ -19,7 +19,7 @@ def cross_emotional_collate_fn(batch):
         target_audios.append(target_audio)
         audio_lengths.append(target_audio.shape[0])
 
-    # Pad target audios to same length
+    # Pad target audios to the same length
     max_length = max(audio_lengths)
     padded_target_audios = []
 
