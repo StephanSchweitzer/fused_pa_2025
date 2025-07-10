@@ -1,6 +1,6 @@
 import torch
 import torchaudio
-from emotion_model import ValenceArousalXTTS
+from model.core.models.emotion_model import ValenceArousalXTTS
 
 # === EASY TO CHANGE VARIABLES ===
 REFERENCE_AUDIO = "voices/stef/test1.wav"
@@ -56,14 +56,14 @@ for emotion_name, (valence, arousal) in EMOTIONS.items():
         else:
             audio = audio_output
         
-        # Convert to tensor if needed and ensure proper format
+        # Convert to tensor if needed and ensure a proper format
         if not isinstance(audio, torch.Tensor):
             audio = torch.from_numpy(audio)
         
         if audio.dim() == 1:
             audio = audio.unsqueeze(0)  # Add channel dimension
         
-        # Save audio file
+        # Save an audio file
         output_file = f"output_{emotion_name}.wav"
         torchaudio.save(output_file, audio.cpu(), 24000)
         print(f"✅ Saved: {output_file}")
