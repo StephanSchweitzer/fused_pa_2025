@@ -3,8 +3,8 @@ from typing import Dict, Any
 
 from tqdm import tqdm
 
-from ..training.loss_functions import compute_conditioning_loss
-from ..training.training_utils import save_temp_audio, cleanup_temp_file, generate_audio_sample
+from model.training.loss_functions import compute_conditioning_loss
+from model.utils.model_utils import save_temp_audio, cleanup_temp_file, generate_audio_sample
 
 
 class EmotionEvaluator:

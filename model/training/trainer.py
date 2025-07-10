@@ -13,7 +13,7 @@ from model.data.collate_functions import cross_emotional_collate_fn
 from model.core.models.emotion_model import ValenceArousalXTTS
 from model.training.loss_functions import compute_conditioning_loss
 from model.training.metrics import update_vad_guided_targets
-from model.training.training_utils import *
+from model.utils.model_utils import *
 from model.evaluation.vad_analyzer import VADAnalyzer
 from model.evaluation.evaluator import EmotionEvaluator
 

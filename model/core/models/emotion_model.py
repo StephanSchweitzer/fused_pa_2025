@@ -6,16 +6,8 @@ import torchaudio
 from TTS.tts.layers.xtts.dvae import DiscreteVAE
 from TTS.tts.layers.tortoise.arch_utils import TorchMelSpectrogram
 from model.core.adapters.valence_arousal_adapter import ValenceArousalAdapter
-
-from ...model_utils import (
-    load_xtts_model,
-    verify_xtts_components,
-    get_model_info,
-    move_model_to_device,
-    freeze_model_parameters,
-    get_device_info,
-    DEFAULT_XTTS_CONFIG
-)
+from model.utils.device_utils import *
+from model.utils.model_utils import *
 
 
 class ValenceArousalXTTS(nn.Module):
@@ -100,16 +92,6 @@ class ValenceArousalXTTS(nn.Module):
 
         return self
 
-    def debug_tensor_devices(self, *tensors, names=None):
-        if names is None:
-            names = [f"tensor_{i}" for i in range(len(tensors))]
-
-        for tensor, name in zip(tensors, names):
-            if torch.is_tensor(tensor):
-                print(f"{name}: device={tensor.device}, shape={tensor.shape}")
-            else:
-                print(f"{name}: not a tensor, type={type(tensor)}")
-
     def _init_dvae_and_mel_converter(self):
         try:
             dvae_path = os.path.join(self.local_model_dir, "dvae.pth")
@@ -193,48 +175,14 @@ class ValenceArousalXTTS(nn.Module):
             print(f"CRITICAL: Batch token extraction failed: {e}")
             raise e
 
-    def _prepare_audio_tensor(self, audio_tensor):
-        if audio_tensor.dim() == 3:
-            audio_tensor = audio_tensor.squeeze(0)
-        if audio_tensor.dim() == 2:
-            audio_tensor = audio_tensor.squeeze(0)
-
-        if audio_tensor.dim() != 1:
-            raise ValueError(f"Expected 1D audio tensor, got {audio_tensor.dim()}D")
-
-        return audio_tensor.cpu()
-
-    def _create_temp_audio_file(self, audio_tensor):
-        temp_file_obj = tempfile.NamedTemporaryFile(suffix='.wav', delete=False)
-        temp_path = temp_file_obj.name
-        temp_file_obj.close()
-
-        try:
-            audio_to_save = audio_tensor.unsqueeze(0) if audio_tensor.dim() == 1 else audio_tensor
-            torchaudio.save(temp_path, audio_to_save, DEFAULT_XTTS_CONFIG["sample_rate"])
-            return temp_path
-        except Exception as e:
-            try:
-                os.unlink(temp_path)
-            except:
-                pass
-            raise e
-
-    def _cleanup_temp_file(self, temp_path):
-        try:
-            if os.path.exists(temp_path):
-                os.unlink(temp_path)
-        except Exception as e:
-            print(f"Warning: Could not delete temporary file {temp_path}: {e}")
-
     def get_conditioning_latents_with_valence_arousal(self, audio_input, valence, arousal, training=False):
         device = next(self.parameters()).device
 
         temp_path = None
         try:
             if training and isinstance(audio_input, torch.Tensor):
-                audio_input = self._prepare_audio_tensor(audio_input)
-                temp_path = self._create_temp_audio_file(audio_input)
+                audio_input = prepare_audio_tensor(audio_input)
+                temp_path = create_temp_audio_file(audio_input)
                 audio_path_for_xtts = [temp_path]
 
             elif isinstance(audio_input, (str, list)):
@@ -254,7 +202,7 @@ class ValenceArousalXTTS(nn.Module):
 
         finally:
             if temp_path is not None:
-                self._cleanup_temp_file(temp_path)
+                cleanup_temp_file(temp_path)
 
         original_gpt_cond_latent = original_gpt_cond_latent.to(device)
         original_speaker_embedding = original_speaker_embedding.to(device)

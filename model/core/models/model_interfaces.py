@@ -3,7 +3,7 @@ import torch
 
 
 class EmotionalTTSModel(Protocol):
-    """Interface pour les modèles TTS émotionnels."""
+    """Interface for Text-to-Speech models with emotional control."""
 
     def inference_with_emotion(
             self,
@@ -13,7 +13,7 @@ class EmotionalTTSModel(Protocol):
             emotion_params: Dict[str, float],
             **kwargs
     ) -> torch.Tensor:
-        """Génération de parole avec contrôle émotionnel."""
+        """Speech synthesis with emotional parameters."""
         ...
 
     def get_conditioning_latents_with_emotion(
@@ -22,7 +22,7 @@ class EmotionalTTSModel(Protocol):
             emotion_params: Dict[str, float],
             training: bool = False
     ) -> Tuple[torch.Tensor, torch.Tensor]:
-        """Extraction des latents de conditionnement avec émotion."""
+        """Extract conditioning latents with emotional parameters."""
         ...
 
 # Types et énumérations

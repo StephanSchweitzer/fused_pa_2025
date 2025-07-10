@@ -54,32 +54,6 @@ def compute_conditioning_loss(model, speaker_ref_path, target_valence, target_ar
         print(f"Target arousal device: {target_arousal.device}")
         raise e
 
-def compute_vad_loss_for_validation(model, generated_audio, target_valence, target_arousal):
-    temp_path = None
-    try:
-        generated_audio_cpu = generated_audio.detach().cpu()
-        temp_path = model.save_temp_audio(generated_audio_cpu)
-        vad_result, status = model.vad_analyzer.extract(temp_path)
-
-        if status != "success" or vad_result is None:
-            print(f"VAD analysis failed: {status}")
-            return None
-
-        return {
-            'pred_valence': vad_result['valence'],
-            'pred_arousal': vad_result['arousal'],
-            'target_valence': target_valence.item(),
-            'target_arousal': target_arousal.item()
-        }
-
-    except Exception as e:
-        print(f"Error computing VAD loss: {e}")
-        return None
-
-    finally:
-        if temp_path:
-            model.cleanup_temp_file(temp_path)
-
 def compute_speaker_similarity_loss(model, speaker_ref_path, generated_audio):
     temp_path = None
     try:
