@@ -14,14 +14,23 @@ from model.core.models.emotion_model import ValenceArousalXTTS
 from model.training.loss_functions import compute_conditioning_loss
 from model.training.metrics import update_vad_guided_targets
 from model.training.training_utils import *
-from model.vad_analyzer import VADAnalyzer
+from model.evaluation.vad_analyzer import VADAnalyzer
+from model.evaluation.evaluator import EmotionEvaluator
 
 
 class EmotionalXTTSTrainer:
     def __init__(self, config_path):
+        self.optimizer = None
+        self.scheduler = None
+        self.val_dataloader = None
+        self.train_dataloader = None
+        self.val_dataset = None
+        self.dataset = None
+        self.train_dataset = None
         self.log_file = None
         self.log_dir = None
         self.checkpoint_dir = None
+
         with open(config_path, 'r') as f:
             self.config = yaml.safe_load(f)
 
@@ -34,6 +43,12 @@ class EmotionalXTTSTrainer:
         self.vad_analyzer = VADAnalyzer(
             model_dir=self.config.get('vad_model_dir', 'vad_model'),
             verbose=True
+        )
+
+        print("Loading EmotionEvaluator...")
+        self.emotion_evaluator = EmotionEvaluator(
+            self,
+            device=self.device
         )
 
         if not self.vad_analyzer.model_available:
@@ -303,98 +318,6 @@ class EmotionalXTTSTrainer:
                 'adaptive_speaker_strength': self.adaptive_speaker_strength
             }
 
-    def validation_step(self, batch):
-        with torch.no_grad():
-            try:
-                batch_size = len(batch['texts'])
-                total_conditioning_loss = 0.0
-                valid_samples = 0
-
-                vad_metrics = {
-                    'valence_mae': 0.0,
-                    'arousal_mae': 0.0
-                }
-
-                vad_eval_enabled = (
-                        not self.vad_disabled and
-                        self.vad_validation_enabled
-                )
-
-                for i in range(batch_size):
-                    try:
-                        target_valence = batch['target_valences'][i].to(self.device)
-                        target_arousal = batch['target_arousals'][i].to(self.device)
-
-                        conditioning_loss, cond_info = compute_conditioning_loss(
-                            self,
-                            batch['speaker_refs'][i],
-                            target_valence,
-                            target_arousal
-                        )
-
-                        if vad_eval_enabled:
-                            generated_audio = generate_audio_sample(
-                                self,
-                                text=batch['texts'][i],
-                                speaker_ref=batch['speaker_refs'][i],
-                                target_valence=target_valence,
-                                target_arousal=target_arousal
-                            )
-
-                            temp_path = save_temp_audio(generated_audio.detach().cpu())
-                            vad_result, status = self.vad_analyzer.extract(temp_path)
-                            cleanup_temp_file(temp_path)
-
-                            if torch.isfinite(conditioning_loss) and status == "success" and vad_result:
-                                total_conditioning_loss += conditioning_loss.item()
-                                valid_samples += 1
-
-                                vad_metrics['valence_mae'] += abs(vad_result['valence'] - target_valence.item())
-                                vad_metrics['arousal_mae'] += abs(vad_result['arousal'] - target_arousal.item())
-                        else:
-                            if torch.isfinite(conditioning_loss):
-                                total_conditioning_loss += conditioning_loss.item()
-                                valid_samples += 1
-
-                    except Exception as e:
-                        print(f"Error in validation sample {i}: {e}")
-                        continue
-
-                if valid_samples > 0:
-                    result = {
-                        'conditioning_loss': total_conditioning_loss / valid_samples,
-                        'valid_samples': valid_samples
-                    }
-
-                    if vad_eval_enabled:
-                        result.update({
-                            'valence_mae': vad_metrics['valence_mae'] / valid_samples,
-                            'arousal_mae': vad_metrics['arousal_mae'] / valid_samples,
-                        })
-                    else:
-                        result.update({
-                            'valence_mae': 0.0,
-                            'arousal_mae': 0.0,
-                        })
-
-                    return result
-                else:
-                    return {
-                        'conditioning_loss': 0.0,
-                        'valence_mae': 0.0,
-                        'arousal_mae': 0.0,
-                        'valid_samples': 0
-                    }
-
-            except Exception as e:
-                print(f"Error in validation step: {e}")
-                return {
-                    'conditioning_loss': 0.0,
-                    'valence_mae': 0.0,
-                    'arousal_mae': 0.0,
-                    'valid_samples': 0
-                }
-
     def train_epoch(self, epoch):
         self.model.train()
         epoch_metrics = {
@@ -464,34 +387,6 @@ class EmotionalXTTSTrainer:
 
         return epoch_metrics
 
-    def validate_epoch(self, epoch):
-        self.model.eval()
-        epoch_metrics = {
-            'conditioning_loss': 0.0,
-            'valence_mae': 0.0,
-            'arousal_mae': 0.0,
-            'valid_samples': 0
-        }
-        num_batches = 0
-
-        with torch.no_grad():
-            for batch in tqdm(self.val_dataloader, desc="Validation"):
-                metrics = self.validation_step(batch)
-
-                for key in epoch_metrics:
-                    epoch_metrics[key] += metrics[key]
-                num_batches += 1
-
-        if num_batches > 0:
-            for key in epoch_metrics:
-                epoch_metrics[key] /= num_batches
-
-        self.writer.add_scalar('Val/ConditioningLoss', epoch_metrics['conditioning_loss'], epoch)
-        self.writer.add_scalar('Val/ValenceMAE', epoch_metrics['valence_mae'], epoch)
-        self.writer.add_scalar('Val/ArousalMAE', epoch_metrics['arousal_mae'], epoch)
-
-        return epoch_metrics
-
     def save_checkpoint(self, epoch, train_metrics, val_metrics, is_best=False):
         checkpoint = {
             'epoch': epoch,
@@ -551,7 +446,7 @@ class EmotionalXTTSTrainer:
 
             train_metrics = self.train_epoch(epoch)
 
-            val_metrics = self.validate_epoch(epoch)
+            val_metrics = self.emotion_evaluator.validate_epoch(epoch)
 
             self.scheduler.step()
 
