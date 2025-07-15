@@ -6,12 +6,12 @@ from tqdm import tqdm
 import pandas as pd
 import soundfile as sf
 import random
-from data_processing.audio_processor.config import ProcessorConfig
-from data_processing.audio_processor.models import ModelManager
-from data_processing.audio_processor.audio import AudioPreprocessor
-from data_processing.audio_processor.transcription import Transcriber
-from data_processing.audio_processor.emotion import VADAnalyzer
-from data_processing.audio_processor.stats import StatsTracker
+from .config import ProcessorConfig
+from .models import ModelManager
+from .audio import AudioPreprocessor
+from .transcription import Transcriber
+from .emotion import VADAnalyzer
+from .stats import StatsTracker
 
 class FileManager:   
     def __init__(self, output_dir: Path):
