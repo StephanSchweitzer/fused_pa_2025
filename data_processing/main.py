@@ -4,10 +4,10 @@ if __name__ == "__main__":
     config = ProcessorConfig(
         output_dir="processed_datasets",
         input_datasets={
-            "emovdb": "../data_collection/tts_data/processed/emovdb",
-            "iemocap": "../data_collection/tts_data/processed/iemocap",
-            "cremad": "../data_collection/tts_data/processed/cremad", 
-            "ravdess": "../data_collection/tts_data/processed/ravdess"
+            "emovdb": "../data_collection/tts_data/raw/emovdb",
+            "iemocap": "../data_collection/tts_data/raw/iemocap/data",
+            "cremad": "../data_collection/tts_data/raw/cremad",
+            "ravdess": "../data_collection/tts_data/raw/ravdess"
         },
         whisper_model="small",
         target_sr=22050,
@@ -24,18 +24,18 @@ if __name__ == "__main__":
         print(f"\nProcessing {dataset_name} from {dataset_path}...")
         
         # Test with 5 files first if you want
-        #test_results = processor.process_dataset(
-        #    input_dir=dataset_path,
-        #    dataset_name=f"{dataset_name}_test",
-        #    max_files=5,
-        #    random_sample=True
-        #)
-        
-        # Full processing
         results = processor.process_dataset(
             input_dir=dataset_path,
-            dataset_name=dataset_name
+            dataset_name=f"{dataset_name}_test",
+            max_files=5,
+            random_sample=False
         )
+        
+        # Full processing
+        #results = processor.process_dataset(
+        #    input_dir=dataset_path,
+        #    dataset_name=dataset_name
+        #)
         
         print(f"Completed {dataset_name}: {results}")
     

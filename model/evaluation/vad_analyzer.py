@@ -6,11 +6,11 @@ import numpy as np
 import os
 
 
-class VADAnalyzer:   
+class VADAnalyzer:
     def __init__(
         self, 
-        model_dir: str = "models/vad_model",
-        cache_dir: str = "models/vad_cache", 
+        model_dir: str = "./models/vad_model",
+        cache_dir: str = "./models/vad_cache",
         verbose: bool = True
     ):
         self.target_sample_rate = 16000
@@ -22,9 +22,7 @@ class VADAnalyzer:
         self.model_available = False
         
         self._initialize_model()
-    
-    
-    
+
     def _initialize_model(self):
         try:
             import audonnx
@@ -117,14 +115,12 @@ class VADAnalyzer:
             base_info["model_test_error"] = str(e)
         
         return base_info
-    
-    
 
     def reload_model(self, auto_download: bool = True):
         if self.verbose:
             print("Reloading VAD model...")
         self._initialize_model()
-        
+
         
 
 if __name__ == "__main__":
@@ -132,7 +128,7 @@ if __name__ == "__main__":
     print("=" * 50)
     
     analyzer = VADAnalyzer(
-        model_dir="models/vad_model",
+        model_dir="./models/vad_model",
         verbose=True
     )
     

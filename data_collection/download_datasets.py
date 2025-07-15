@@ -1,4 +1,5 @@
 from pathlib import Path
+import huggingface_hub
 from config.datasets import DATASETS
 from utils import HuggingFaceDownloader, KaggleDownloader, OpenSLRDownloader
 
@@ -44,3 +45,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+    huggingface_hub.logout()

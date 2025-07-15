@@ -1,8 +1,6 @@
 import os
 from pathlib import Path
 
-DIRECTORY_PATH = r"C:\path\to\your\directory"
-
 DRY_RUN = True
 
 
@@ -50,7 +48,7 @@ def find_duplicate_files(directory_path, dry_run=True):
 
 def main():
     try:
-        result = find_duplicate_files("tts_data\processed\cremad", dry_run=False)
+        result = find_duplicate_files("tts_data/raw/ravdess", dry_run=False)
         
         print(f"\nSummary:")
         print(f"Files found with '_dup': {len(result['found'])}")
