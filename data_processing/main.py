@@ -39,4 +39,7 @@ if __name__ == "__main__":
         
         print(f"Completed {dataset_name}: {results}")
     
+    # Consolidate all datasets
+    consolidated_data = processor.consolidate_all_datasets()
+    
     print(f"\nAll processing complete! Check {config.output_dir} for results.")
