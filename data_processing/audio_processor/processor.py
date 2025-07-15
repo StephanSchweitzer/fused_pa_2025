@@ -6,12 +6,12 @@ from tqdm import tqdm
 import pandas as pd
 import soundfile as sf
 import random
-from data_processing.audio_processor.config import ProcessorConfig
-from data_processing.audio_processor.models import ModelManager
-from data_processing.audio_processor.audio import AudioPreprocessor
-from data_processing.audio_processor.transcription import Transcriber
-from data_processing.audio_processor.emotion import VADAnalyzer
-from data_processing.audio_processor.stats import StatsTracker
+from .config import ProcessorConfig
+from .models import ModelManager
+from .audio import AudioPreprocessor
+from .transcription import Transcriber
+from .emotion import VADAnalyzer
+from .stats import StatsTracker
 
 class FileManager:   
     def __init__(self, output_dir: Path):
@@ -74,7 +74,7 @@ class UniversalAudioProcessor:
         
         result = {
             "file_id": file_id,
-            "original_path": str(audio_path),
+            "original_path": Path(audio_path).as_posix(),
             "dataset": dataset_name,
             "status": "failed",
             "error": None
@@ -107,9 +107,9 @@ class UniversalAudioProcessor:
             
             result.update({
                 "status": "success",
-                "processed_audio_path": str(audio_path),
-                "transcript_path": str(transcript_path),
-                "vad_path": str(vad_path) if vad_path else None,
+                "processed_audio_path": Path(audio_path).as_posix(),
+                "transcript_path": Path(transcript_path).as_posix(),
+                "vad_path": Path(vad_path).as_posix() if vad_path else None,
                 "text": transcription["text"],
                 "language": transcription["language"],
                 "audio_duration": duration,
@@ -242,3 +242,95 @@ class UniversalAudioProcessor:
             self.stats.update("skipped_bad_transcript")
         elif "language_filtered" in status:
             self.stats.update("skipped_language_filter")
+    
+    
+    def consolidate_all_datasets(self) -> Dict:
+        """
+        Consolidate all processed dataset metadata into unified JSON and CSV files.
+        
+        Returns:
+            Dict: Consolidated metadata with summary statistics
+        """
+        from datetime import datetime
+        import datetime as dt
+        
+        print("\nConsolidating all dataset metadata...")
+        
+        # Find all metadata files
+        metadata_files = list(self.file_manager.metadata_dir.glob("*_metadata.json"))
+        
+        if not metadata_files:
+            print("No metadata files found to consolidate.")
+            return {}
+        
+        all_files = []
+        dataset_summaries = []
+        total_files = 0
+        total_duration = 0.0
+        
+        for metadata_file in metadata_files:
+            dataset_name = metadata_file.stem.replace("_metadata", "")
+            
+            try:
+                with open(metadata_file, 'r', encoding='utf-8') as f:
+                    dataset_data = json.load(f)
+                
+                if not dataset_data:
+                    print(f"Warning: Empty metadata file {metadata_file.name}")
+                    continue
+                
+                # Calculate dataset statistics
+                dataset_files = len(dataset_data)
+                dataset_duration = sum(item.get("audio_duration", 0) for item in dataset_data)
+                success_rate = 1.0  # All files in metadata are successful
+                
+                # Add dataset summary
+                dataset_summaries.append({
+                    "dataset": dataset_name,
+                    "files_processed": dataset_files,
+                    "duration_hours": round(dataset_duration / 3600, 2),
+                    "success_rate": success_rate
+                })
+                
+                # Add all files to consolidated list
+                all_files.extend(dataset_data)
+                total_files += dataset_files
+                total_duration += dataset_duration
+                
+                print(f"  Added {dataset_name}: {dataset_files} files, "
+                      f"{dataset_duration/3600:.2f} hours")
+                
+            except Exception as e:
+                print(f"Error processing {metadata_file.name}: {e}")
+                continue
+        
+        # Create consolidated data structure
+        consolidated_data = {
+            "consolidation_info": {
+                "timestamp": datetime.now(dt.timezone.utc).isoformat().replace('+00:00', 'Z'),
+                "total_datasets": len(dataset_summaries),
+                "total_files": total_files,
+                "total_duration_hours": round(total_duration / 3600, 2)
+            },
+            "dataset_summaries": dataset_summaries,
+            "all_files": all_files
+        }
+        
+        # Save consolidated JSON
+        consolidated_json_path = self.file_manager.metadata_dir / "all_datasets_consolidated.json"
+        with open(consolidated_json_path, 'w', encoding='utf-8') as f:
+            json.dump(consolidated_data, f, indent=2, ensure_ascii=False)
+        
+        # Save consolidated CSV (all files)
+        if all_files:
+            consolidated_csv_path = self.file_manager.metadata_dir / "all_datasets_consolidated.csv"
+            df = pd.DataFrame(all_files)
+            df.to_csv(consolidated_csv_path, index=False)
+            
+            print(f"Consolidated metadata saved:")
+            print(f"  JSON: {consolidated_json_path}")
+            print(f"  CSV: {consolidated_csv_path}")
+            print(f"  Total: {total_files} files from {len(dataset_summaries)} datasets")
+            print(f"  Duration: {total_duration/3600:.2f} hours")
+        
+        return consolidated_data
