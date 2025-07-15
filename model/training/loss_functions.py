@@ -1,5 +1,6 @@
 import torch
 import torch.nn.functional as F
+from model.training.metrics import get_vad_guided_targets
 
 
 def compute_conditioning_loss(model, speaker_ref_path, target_valence, target_arousal):
@@ -24,7 +25,8 @@ def compute_conditioning_loss(model, speaker_ref_path, target_valence, target_ar
         gpt_diff = torch.norm(emotion_gpt_latent - original_gpt_latent)
         speaker_diff = torch.norm(emotion_speaker_emb - original_speaker_emb)
 
-        target_gpt_modification, target_speaker_modification = model.get_vad_guided_targets(
+        target_gpt_modification, target_speaker_modification = get_vad_guided_targets(
+            model,
             target_valence, target_arousal
         )
 

@@ -1,21 +1,21 @@
 import torch
 from model.core.models.emotion_model import ValenceArousalXTTS
+from model.utils.device_utils import get_optimal_device, get_device_info
 
 
 if __name__ == "__main__":
     model = ValenceArousalXTTS(local_model_dir="./models/xtts_v2")
 
-    if torch.cuda.is_available():
-        model = model.cuda()
-        print("Model moved to GPU")
-        print(f"Model device: {next(model.parameters()).device}")
-        print(f"Adapter device: {next(model.va_adapter.parameters()).device}")
+    # Auto-select optimal device
+    optimal_device = get_optimal_device()
+    model = model.to(optimal_device)
+
+    device_info = get_device_info()
+    print(f"Using device: {optimal_device}")
+    print(f"Device info: {device_info}")
 
     info = model.get_model_info()
-    print("Model Info:")
-    for key, value in info.items():
-        if key != "model_files":
-            print(f"  {key}: {value}")
+    print(f"Model info: {info}")
 
     # Example inference
     # audio_output = model.inference_with_valence_arousal(

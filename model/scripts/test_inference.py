@@ -1,6 +1,7 @@
 import torch
 import torchaudio
 from model.core.models.emotion_model import ValenceArousalXTTS
+from model.utils.device_utils import get_optimal_device, get_device_info
 
 # === EASY TO CHANGE VARIABLES ===
 REFERENCE_AUDIO = "voices/stef/test1.wav"
@@ -20,11 +21,20 @@ EMOTIONS = {
 print("Loading emotional XTTS model...")
 model = ValenceArousalXTTS(local_model_dir="./models/xtts_v2")
 
-if torch.cuda.is_available():
-    model = model.cuda()
-    print("Model loaded on GPU")
-else:
-    print("Model loaded on CPU")
+# Auto-select optimal device (MPS > CUDA > CPU)
+optimal_device = get_optimal_device()
+device_info = get_device_info()
+
+print(f"Device info: {device_info}")
+print(f"Using optimal device: {optimal_device}")
+
+try:
+    model = model.to(optimal_device)
+    print(f"✅ Model loaded on {optimal_device}")
+except Exception as e:
+    print(f"⚠️  Error loading on {optimal_device}, falling back to CPU: {e}")
+    model = model.to(torch.device('cpu'))
+    print("✅ Model loaded on CPU")
 
 # Load trained adapter
 print(f"Loading trained adapter from {ADAPTER_PATH}")

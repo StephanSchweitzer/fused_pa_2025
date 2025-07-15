@@ -94,12 +94,22 @@ class EmotionEvaluator:
         num_batches = 0
 
         with torch.no_grad():
-            for batch in tqdm(self.val_dataloader, desc="Validation"):
-                metrics = self.validation_step(batch)
 
-                for key in epoch_metrics:
-                    epoch_metrics[key] += metrics[key]
-                num_batches += 1
+            if self.val_dataloader is None:
+                print("Warning: No validation dataloader available, skipping validation")
+                return {
+                    'conditioning_loss': 0.0,
+                    'valence_mae': 0.0,
+                    'arousal_mae': 0.0,
+                    'valid_samples': 0
+                }
+
+            for batch in tqdm(self.val_dataloader, desc="Validation"):
+                        metrics = self.validation_step(batch)
+
+                        for key in epoch_metrics:
+                            epoch_metrics[key] += metrics[key]
+                        num_batches += 1
 
         if num_batches > 0:
             for key in epoch_metrics:

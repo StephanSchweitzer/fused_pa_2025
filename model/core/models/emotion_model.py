@@ -57,7 +57,11 @@ class ValenceArousalXTTS(nn.Module):
         print("ValenceArousalXTTS initialization complete!")
 
     def to(self, device):
+        """
+        Move model to device with hybrid MPS/CPU strategy
+        """
         super().to(device)
+        self.primary_device = device
 
         if hasattr(self, 'xtts'):
             self.xtts = move_model_to_device(self.xtts, device)
@@ -65,32 +69,68 @@ class ValenceArousalXTTS(nn.Module):
         if hasattr(self, 'va_adapter'):
             self.va_adapter = self.va_adapter.to(device)
 
+        # Handle DVAE with potential CPU fallback for MPS
         if hasattr(self, 'dvae') and self.dvae is not None:
-            self.dvae = self.dvae.to(device)
+            try:
+                self.dvae = self.dvae.to(device)
+                self.dvae_device = device
+                print(f"✅ DVAE on {device}")
+            except Exception as e:
+                if str(device).startswith('mps'):
+                    print(f"⚠️  DVAE incompatible with MPS, using CPU fallback: {e}")
+                    self.dvae = self.dvae.to(torch.device('cpu'))
+                    self.dvae_device = torch.device('cpu')
+                else:
+                    raise e
 
+        # Handle mel converter with potential CPU fallback for MPS
         if hasattr(self, 'mel_converter') and self.mel_converter is not None:
-            self.mel_converter = self.mel_converter.to(device)
+            try:
+                self.mel_converter = self.mel_converter.to(device)
+                self.mel_device = device
+                print(f"✅ Mel converter on {device}")
+            except Exception as e:
+                if str(device).startswith('mps'):
+                    print(f"⚠️  Mel converter incompatible with MPS, using CPU fallback: {e}")
+                    self.mel_converter = self.mel_converter.to(torch.device('cpu'))
+                    self.mel_device = torch.device('cpu')
+                else:
+                    raise e
 
         return self
 
     def cuda(self, device=None):
-        super().cuda(device)
+        """
+        Move model to CUDA device (legacy method)
+        """
+        if device is None:
+            device = torch.device('cuda')
+        return self.to(device)
 
-        target_device = device if device is not None else torch.device('cuda')
+    def mps(self):
+        """
+        Move model to MPS device (Apple Silicon GPU)
+        """
+        return self.to(torch.device('mps'))
 
-        if hasattr(self, 'xtts'):
-            self.xtts = move_model_to_device(self.xtts, target_device)
+    def auto_device(self):
+        """
+        Automatically select and move to optimal device
+        """
+        optimal_device = get_optimal_device()
+        return self.to(optimal_device)
 
-        if hasattr(self, 'va_adapter'):
-            self.va_adapter = self.va_adapter.cuda(device)
-
-        if hasattr(self, 'dvae') and self.dvae is not None:
-            self.dvae = self.dvae.cuda(device)
-
-        if hasattr(self, 'mel_converter') and self.mel_converter is not None:
-            self.mel_converter = self.mel_converter.cuda(device)
-
-        return self
+    def get_device_status(self):
+        """
+        Get current device status for all components
+        """
+        return {
+            "primary_device": str(self.primary_device),
+            "dvae_device": str(self.dvae_device) if self.dvae_device else None,
+            "mel_device": str(self.mel_device) if self.mel_device else None,
+            "xtts_device": str(next(self.xtts.parameters()).device) if hasattr(self, 'xtts') else None,
+            "adapter_device": str(next(self.va_adapter.parameters()).device) if hasattr(self, 'va_adapter') else None
+        }
 
     def _init_dvae_and_mel_converter(self):
         try:

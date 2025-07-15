@@ -1,6 +1,6 @@
 data:
-  metadata_path: "../../data/processed_datasets/metadata/all_voice_metadata.json"
-  data_dir: "../../data"
+  metadata_path: "../data_processing/processed_datasets/metadata/all_voice_metadata.json"
+  data_dir: "../data_processing"
   sample_rate: 22050
   
 model:
@@ -23,18 +23,18 @@ optimization:
   gradient_clip_norm: 1.0
   
 paths:
-  checkpoint_dir: "../checkpoints/valence_arousal_xtts"
-  log_dir: "../logs/valence_arousal_xtts"
+  checkpoint_dir: "./checkpoints/valence_arousal_xtts"
+  log_dir: "./logs/valence_arousal_xtts"
 
 xtts:
-  local_model_dir: "../models/xtts_v2"
+  local_model_dir: "./models/xtts_v2"
 
 device: "cuda"
 num_workers: 0
 
 seed: 42
 
-vad_model_dir: "../models/vad_model"
+vad_model_dir: "./models/vad_model"
 
 quick_test:
   enabled: true               

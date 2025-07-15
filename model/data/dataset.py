@@ -29,6 +29,7 @@ class ValenceArousalDataset(Dataset):
 
             # Check for valence and arousal values
             if 'valence' not in item or 'arousal' not in item:
+                print(f"Skipping item without valence/arousal: {item.get('processed_audio_path')}")
                 skipped += 1
                 continue
 
@@ -46,12 +47,14 @@ class ValenceArousalDataset(Dataset):
                 item['arousal'] = arousal
 
             except (ValueError, TypeError):
+                print(f"Invalid valence/arousal values for item: {item.get('processed_audio_path')}")
                 skipped += 1
                 continue
 
             # Check if an audio file exists
             audio_path = self.data_dir / item['processed_audio_path']
             if not audio_path.exists():
+                print(f"Audio file does not exist: {audio_path}")
                 skipped += 1
                 continue
 

@@ -9,8 +9,8 @@ import os
 class VADAnalyzer:
     def __init__(
         self, 
-        model_dir: str = "models/vad_model",
-        cache_dir: str = "models/vad_cache", 
+        model_dir: str = "./models/vad_model",
+        cache_dir: str = "./models/vad_cache",
         verbose: bool = True
     ):
         self.target_sample_rate = 16000
@@ -128,7 +128,7 @@ if __name__ == "__main__":
     print("=" * 50)
     
     analyzer = VADAnalyzer(
-        model_dir="models/vad_model",
+        model_dir="./models/vad_model",
         verbose=True
     )
     

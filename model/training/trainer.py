@@ -16,7 +16,7 @@ from model.training.metrics import update_vad_guided_targets
 from model.utils.model_utils import *
 from model.evaluation.vad_analyzer import VADAnalyzer
 from model.evaluation.evaluator import EmotionEvaluator
-
+from model.utils.device_utils import get_optimal_device, get_device_info
 
 class EmotionalXTTSTrainer:
     def __init__(self, config_path):
@@ -34,7 +34,27 @@ class EmotionalXTTSTrainer:
         with open(config_path, 'r') as f:
             self.config = yaml.safe_load(f)
 
-        self.device = torch.device(self.config['device'] if torch.cuda.is_available() else 'cpu')
+        # Auto-select optimal device with fallback
+        optimal_device = get_optimal_device()
+        device_info = get_device_info()
+
+        print(f"Available devices: {device_info}")
+
+        # Override config device if auto-selection is better
+        if self.config.get('device', 'auto') == 'auto':
+            self.device = optimal_device
+        else:
+            # Use specified device but validate it's available
+            specified_device = self.config['device']
+            if specified_device == 'mps' and not torch.backends.mps.is_available():
+                print(f"⚠️  MPS not available, falling back to optimal device: {optimal_device}")
+                self.device = optimal_device
+            elif specified_device == 'cuda' and not torch.cuda.is_available():
+                print(f"⚠️  CUDA not available, falling back to optimal device: {optimal_device}")
+                self.device = optimal_device
+            else:
+                self.device = torch.device(specified_device)
+
         print(f"Using device: {self.device}")
 
         self.setup_logging()
