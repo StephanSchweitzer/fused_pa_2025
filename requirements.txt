@@ -1,0 +1,48 @@
+# Core ML and Audio Processing
+numpy>=1.24.0
+pandas>=2.0.0
+torch>=2.0.0
+torchvision>=0.20.0
+torchaudio>=2.0.0
+librosa>=0.10.0
+soundfile>=0.12.0
+scipy
+
+# Speech and NLP
+transformers>=4.36.0
+openai-whisper>=20230314
+TTS
+funasr
+modelscope
+
+# HuggingFace
+huggingface-hub
+datasets
+tokenizers
+
+# Data Download
+kagglehub
+
+# Audio Processing
+audeer
+audonnx
+
+# Utilities
+tqdm>=4.65.0
+pathlib2>=2.3.7
+python-dotenv
+
+# GCP Integration
+google-cloud-storage>=2.10.0
+google-cloud-aiplatform>=1.38.0
+google-auth>=2.23.0
+google-auth-oauthlib>=1.0.0
+google-auth-httplib2>=0.1.0
+
+# Logging and Monitoring
+structlog>=23.0.0
+colorlog>=6.7.0
+
+# Development and Testing
+pytest>=7.0.0
+pytest-cov>=4.0.0

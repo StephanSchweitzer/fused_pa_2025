@@ -137,3 +137,11 @@ vad_cache/
 *.flac
 *.m4a
 *.aac
+
+# Pipeline specific
+pipeline_data/
+*.tmp
+*.pid
+*.lock
+service-account-key.json
+.env
