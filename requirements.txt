@@ -11,7 +11,7 @@ scipy
 # Speech and NLP
 transformers>=4.36.0
 openai-whisper>=20230314
-TTS
+coqui-tts
 funasr
 modelscope
 

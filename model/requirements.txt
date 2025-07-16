@@ -8,7 +8,7 @@ torchaudio
 librosa
 soundfile 
 scipy
-TTS
+coqui-tts
 torch
 transformers==4.36.2
 openai-whisper
