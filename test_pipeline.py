@@ -25,7 +25,6 @@ def setup_test_environment():
         'GCP_PROJECT_ID': 'test-project',
         'GCS_RAW_DATA_BUCKET': 'test-raw-bucket',
         'GCS_PROCESSED_DATA_BUCKET': 'test-processed-bucket',
-        'GCS_MODEL_BUCKET': 'test-model-bucket',
         'VERTEX_AI_REGION': 'us-central1',
         'GOOGLE_APPLICATION_CREDENTIALS': '/tmp/test-credentials.json',
         'LOG_LEVEL': 'INFO'

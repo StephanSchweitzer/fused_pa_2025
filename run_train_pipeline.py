@@ -163,45 +163,22 @@ data:
             self.logger.error("Model training failed", error=str(e))
             return False
     
-    def upload_model_to_gcs(self) -> bool:
-        """Upload trained model to GCS."""
+    def register_model_vertex_ai(self) -> bool:
+        """Register model with Vertex AI Model Registry directly from local path."""
         try:
-            self.logger.info("Starting model upload to GCS")
+            self.logger.info("Starting model registration with Vertex AI")
             
+            # Get local model path
             model_output_path = Path(__file__).parent / "pipeline_data" / "models"
+            
             if not model_output_path.exists():
                 self.logger.error("Model output directory not found", path=str(model_output_path))
                 return False
             
-            success = self.storage_manager.upload_directory(
-                str(model_output_path),
-                self.config.get('gcs_model_bucket'),
-                "trained_models"
-            )
-            
-            if success:
-                self.logger.info("Model upload to GCS completed successfully")
-            else:
-                self.logger.error("Model upload to GCS failed")
-            
-            return success
-            
-        except Exception as e:
-            self.logger.error("Model upload to GCS failed", error=str(e))
-            return False
-    
-    def register_model_vertex_ai(self) -> bool:
-        """Register model with Vertex AI Model Registry."""
-        try:
-            self.logger.info("Starting model registration with Vertex AI")
-            
-            # Upload model to Vertex AI Model Registry
-            model_gcs_path = f"gs://{self.config.get('gcs_model_bucket')}/trained_models"
-            
+            # Upload model directly to Vertex AI Model Registry
             success = self.vertex_ai_manager.upload_model(
-                model_path=model_gcs_path,
-                model_name="emotion_xtts_model",
-                model_version="1.0"
+                model_path=str(model_output_path),
+                model_name="emotion_xtts_model"
             )
             
             if success:
@@ -232,11 +209,7 @@ data:
             if not self.run_model_training():
                 return handle_pipeline_error(self.logger, Exception("Model training failed"), "model_training")
             
-            # Step 4: Upload Model to GCS
-            if not self.upload_model_to_gcs():
-                return handle_pipeline_error(self.logger, Exception("Model upload to GCS failed"), "model_upload_gcs")
-            
-            # Step 5: Register Model with Vertex AI
+            # Step 4: Register Model with Vertex AI (Direct Upload)
             if not self.register_model_vertex_ai():
                 return handle_pipeline_error(self.logger, Exception("Model registration with Vertex AI failed"), "model_registration_vertex_ai")
             
