@@ -13,6 +13,8 @@ from google.cloud import storage
 from google.cloud import aiplatform
 from google.auth.exceptions import GoogleAuthError
 import colorlog
+from datetime import datetime
+import time
 
 
 class PipelineLogger:
@@ -205,21 +207,105 @@ class VertexAIManager:
             self.logger.error("Failed to initialize Vertex AI", error=str(e))
             raise
     
-    def upload_model(self, model_path: str, model_name: str, model_version: str = "1.0") -> bool:
-        """Upload trained model to Vertex AI Model Registry."""
+    def upload_model(self, model_path: str, model_name: str, model_version: str = None) -> bool:
+        """Upload trained model to Vertex AI Model Registry with enhanced versioning."""
         try:
+            # Generate version if not provided
+            if model_version is None:
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                model_version = f"v_{timestamp}"
+            
+            # Create display name with version
+            display_name = f"{model_name}_{model_version}"
+            
+            # Get absolute path if local path provided
+            if not model_path.startswith("gs://"):
+                model_path = str(Path(model_path).resolve())
+                
+                # Check if local path exists
+                if not Path(model_path).exists():
+                    self.logger.error(f"Local model path does not exist: {model_path}")
+                    return False
+                
+                # Upload local model directory to temporary GCS location
+                temp_bucket_name = f"{self.project_id}-temp-models"
+                temp_gcs_path = f"gs://{temp_bucket_name}/temp_models/{model_name}_{model_version}"
+                
+                self.logger.info(f"Uploading local model to temporary GCS location: {temp_gcs_path}")
+                
+                # Create temporary bucket if it doesn't exist
+                storage_client = storage.Client(project=self.project_id)
+                try:
+                    bucket = storage_client.bucket(temp_bucket_name)
+                    if not bucket.exists():
+                        bucket.create()
+                        self.logger.info(f"Created temporary bucket: {temp_bucket_name}")
+                except Exception as e:
+                    self.logger.warning(f"Could not create/access temporary bucket: {e}")
+                    # Continue with existing bucket or create manually
+                
+                # Upload directory to GCS
+                if Path(model_path).is_dir():
+                    # Upload directory
+                    for file_path in Path(model_path).rglob("*"):
+                        if file_path.is_file():
+                            relative_path = file_path.relative_to(model_path)
+                            blob_name = f"temp_models/{model_name}_{model_version}/{relative_path}"
+                            blob = bucket.blob(blob_name)
+                            blob.upload_from_filename(str(file_path))
+                else:
+                    # Upload single file
+                    blob_name = f"temp_models/{model_name}_{model_version}/{Path(model_path).name}"
+                    blob = bucket.blob(blob_name)
+                    blob.upload_from_filename(str(model_path))
+                
+                model_path = temp_gcs_path
+            
+            # Prepare model metadata
+            model_metadata = {
+                "training_timestamp": datetime.now().isoformat(),
+                "model_version": model_version,
+                "created_by": "training_pipeline",
+                "framework": "pytorch"
+            }
+            
+            self.logger.info(f"Uploading model to Vertex AI: {display_name}")
+            
+            # Upload model to Vertex AI Model Registry
             model = aiplatform.Model.upload(
-                display_name=model_name,
+                display_name=display_name,
                 artifact_uri=model_path,
-                serving_container_image_uri="us-docker.pkg.dev/vertex-ai/prediction/pytorch-gpu.1-13:latest"
+                serving_container_image_uri="us-docker.pkg.dev/vertex-ai/prediction/pytorch-gpu.1-13:latest",
+                description=f"Emotion recognition model {model_name} version {model_version}",
+                labels={
+                    "model_name": model_name.replace("_", "-"),
+                    "version": model_version.replace("_", "-"),
+                    "framework": "pytorch",
+                    "created_by": "training-pipeline"
+                }
             )
             
             self.logger.info(
                 "Successfully uploaded model to Vertex AI", 
                 model_name=model_name, 
                 model_version=model_version,
-                model_resource_name=model.resource_name
+                display_name=display_name,
+                model_resource_name=model.resource_name,
+                model_metadata=model_metadata
             )
+            
+            # Clean up temporary GCS files if they were created
+            if not model_path.startswith("gs://") and "temp_models" in model_path:
+                try:
+                    storage_client = storage.Client(project=self.project_id)
+                    bucket = storage_client.bucket(temp_bucket_name)
+                    blobs = bucket.list_blobs(prefix=f"temp_models/{model_name}_{model_version}/")
+                    for blob in blobs:
+                        blob.delete()
+                    self.logger.info(f"Cleaned up temporary GCS files for {model_name}_{model_version}")
+                except Exception as e:
+                    self.logger.warning(f"Could not clean up temporary GCS files: {e}")
+            
             return True
             
         except Exception as e:
@@ -249,7 +335,6 @@ class PipelineConfig:
             'GCP_PROJECT_ID',
             'GCS_RAW_DATA_BUCKET',
             'GCS_PROCESSED_DATA_BUCKET',
-            'GCS_MODEL_BUCKET',
             'VERTEX_AI_REGION'
         ]
         
@@ -303,7 +388,6 @@ def validate_environment() -> bool:
         'GCP_PROJECT_ID',
         'GCS_RAW_DATA_BUCKET',
         'GCS_PROCESSED_DATA_BUCKET',
-        'GCS_MODEL_BUCKET',
         'VERTEX_AI_REGION'
     ]
     

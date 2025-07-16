@@ -27,10 +27,10 @@ This system provides three main pipeline components that can be run individually
 ## Features
 
 - **GCP Integration**: Automatic upload to Cloud Storage and Vertex AI Model Registry
-- **Docker Support**: Containerized execution for consistent deployments
 - **Structured Logging**: Comprehensive logging with different levels and colors
 - **Error Handling**: Robust error handling with specific failure reporting
 - **Environment Configuration**: Flexible configuration via environment variables
+- **Direct Model Upload**: Models are uploaded directly to Vertex AI Model Registry
 - **CI/CD Ready**: Designed for continuous integration and deployment
 
 ## Deployment Guide
@@ -39,7 +39,6 @@ This system provides three main pipeline components that can be run individually
 
 - Python 3.12+
 - Google Cloud Platform (GCP) account with billing enabled
-- Docker and Docker Compose installed (for containerized deployment)
 - Git installed
 
 ### Step 1: GCP Project Setup
@@ -108,7 +107,6 @@ This system provides three main pipeline components that can be run individually
    # Create buckets with unique names
    gsutil mb -p $PROJECT_ID -c STANDARD -l $REGION gs://$PROJECT_ID-raw-data
    gsutil mb -p $PROJECT_ID -c STANDARD -l $REGION gs://$PROJECT_ID-processed-data
-   gsutil mb -p $PROJECT_ID -c STANDARD -l $REGION gs://$PROJECT_ID-models
    ```
 
 2. **Set bucket permissions (optional - for public access):**
@@ -153,7 +151,6 @@ This system provides three main pipeline components that can be run individually
    GCP_PROJECT_ID=your-ml-pipeline-project
    GCS_RAW_DATA_BUCKET=your-ml-pipeline-project-raw-data
    GCS_PROCESSED_DATA_BUCKET=your-ml-pipeline-project-processed-data
-   GCS_MODEL_BUCKET=your-ml-pipeline-project-models
    VERTEX_AI_REGION=us-central1
    GOOGLE_APPLICATION_CREDENTIALS=/path/to/your/ml-pipeline-key.json
    LOG_LEVEL=INFO
@@ -178,33 +175,7 @@ This system provides three main pipeline components that can be run individually
    python run_complete_pipeline.py
    ```
 
-### Step 7: Docker Deployment
-
-1. **Build Docker image:**
-   ```bash
-   docker build -t ml-pipeline:latest .
-   ```
-
-2. **Run with Docker Compose:**
-   ```bash
-   # Copy your service account key to the project directory
-   cp ~/ml-pipeline-key.json ./service-account-key.json
-   
-   # Update docker-compose.yml to mount the key file
-   # Then run the pipeline
-   docker-compose up ml-pipeline
-   ```
-
-3. **Run individual components with Docker:**
-   ```bash
-   # Data pipeline only
-   docker-compose up data-pipeline
-   
-   # Training pipeline only
-   docker-compose up training-pipeline
-   ```
-
-### Step 8: CI/CD Deployment
+### Step 7: CI/CD Deployment
 
 1. **Set up GitHub Actions secrets:**
    - Go to your GitHub repository > Settings > Secrets
@@ -213,7 +184,6 @@ This system provides three main pipeline components that can be run individually
      - `GCP_SA_KEY`: Contents of your service account key JSON file
      - `GCS_RAW_DATA_BUCKET`: Your raw data bucket name
      - `GCS_PROCESSED_DATA_BUCKET`: Your processed data bucket name
-     - `GCS_MODEL_BUCKET`: Your model bucket name
 
 2. **Example GitHub Actions workflow:**
    ```yaml
@@ -244,14 +214,13 @@ This system provides three main pipeline components that can be run individually
            run: python run_complete_pipeline.py
    ```
 
-### Step 9: Verification
+### Step 8: Verification
 
 1. **Check GCS buckets:**
    ```bash
    # List objects in buckets
    gsutil ls gs://$PROJECT_ID-raw-data
    gsutil ls gs://$PROJECT_ID-processed-data
-   gsutil ls gs://$PROJECT_ID-models
    ```
 
 2. **Check Vertex AI Model Registry:**
@@ -265,7 +234,7 @@ This system provides three main pipeline components that can be run individually
    tail -f pipeline.log
    ```
 
-### Step 10: Troubleshooting
+### Step 9: Troubleshooting
 
 1. **Authentication Issues:**
    ```bash
@@ -283,16 +252,7 @@ This system provides three main pipeline components that can be run individually
      --filter="bindings.members:ml-pipeline-sa@$PROJECT_ID.iam.gserviceaccount.com"
    ```
 
-3. **Docker Issues:**
-   ```bash
-   # Check Docker logs
-   docker-compose logs ml-pipeline
-   
-   # Run interactive container for debugging
-   docker run -it --env-file .env ml-pipeline:latest /bin/bash
-   ```
-
-4. **Common Error Solutions:**
+3. **Common Error Solutions:**
    - **"Project not found"**: Ensure `GCP_PROJECT_ID` is correct
    - **"Access denied"**: Check service account permissions
    - **"Bucket not found"**: Verify bucket names and regions
@@ -319,24 +279,6 @@ python run_train_pipeline.py
 python run_complete_pipeline.py
 ```
 
-#### Docker Execution
-
-**Build and run complete pipeline:**
-```bash
-docker-compose up ml-pipeline
-```
-
-**Run individual components:**
-```bash
-# Data pipeline only
-docker-compose up data-pipeline
-
-# Training pipeline only
-docker-compose up training-pipeline
-```
-
-> **Note**: For detailed Docker deployment instructions, see the [Deployment Guide](#deployment-guide) section above.
-
 ## Configuration
 
 ### Environment Variables
@@ -346,7 +288,6 @@ docker-compose up training-pipeline
 | `GCP_PROJECT_ID` | GCP project identifier | Yes |
 | `GCS_RAW_DATA_BUCKET` | Bucket for raw data | Yes |
 | `GCS_PROCESSED_DATA_BUCKET` | Bucket for processed data | Yes |
-| `GCS_MODEL_BUCKET` | Bucket for model artifacts | Yes |
 | `VERTEX_AI_REGION` | Vertex AI region | Yes |
 | `GOOGLE_APPLICATION_CREDENTIALS` | Path to service account key | Yes |
 | `LOG_LEVEL` | Logging level (DEBUG, INFO, WARNING, ERROR) | No |
@@ -364,7 +305,7 @@ docker-compose up training-pipeline
    - Storage Admin
    - Vertex AI User
 4. Download service account key JSON file
-5. Create Cloud Storage buckets for raw data, processed data, and models
+5. Create Cloud Storage buckets for raw data and processed data
 
 ## Pipeline Flow
 
@@ -378,8 +319,7 @@ docker-compose up training-pipeline
 1. Download processed data from GCS
 2. Prepare training data
 3. Train model using existing training scripts
-4. Upload trained model to GCS model bucket
-5. Register model in Vertex AI Model Registry
+4. Register model directly in Vertex AI Model Registry with enhanced versioning and metadata
 
 ### Complete Pipeline
 1. Execute data pipeline
@@ -399,8 +339,6 @@ docker-compose up training-pipeline
 ├── run_complete_pipeline.py # Full pipeline
 ├── pipeline_utils.py        # Shared utilities
 ├── requirements.txt         # Dependencies
-├── Dockerfile              # Docker configuration
-├── docker-compose.yml      # Docker Compose configuration
 └── .env.example           # Environment configuration template
 ```
 
@@ -433,7 +371,7 @@ pytest tests/
 ### Building Docker Image
 
 ```bash
-docker build -t ml-pipeline .
+python -m pytest tests/
 ```
 
 ### Contributing
@@ -449,7 +387,6 @@ For issues and questions:
 1. Check the logs for detailed error information
 2. Verify GCP configuration and permissions
 3. Ensure all environment variables are set correctly
-4. Check Docker container logs if using containerized execution
 
 ## License
 
